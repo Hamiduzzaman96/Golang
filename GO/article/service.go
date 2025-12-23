@@ -1,59 +1,42 @@
-package mysql
+package article
 
 import (
 	"context"
-	"database/sql"
 
-	"example.com/GoLang/GO/domain"
-	"github.com/sirupsen/logrus"
+	"github.com/bxcodec/go-clean-arch/domain/GO/domain"
 )
 
-type ArticleRepository struct {
-	Conn *sql.DB
+type ArticleRepository interface {
+	GetByID(ctx context.Context, id int64) (domain.Article, error)
 }
 
-// constructor
-func NewArticleRepository(conn *sql.DB) *ArticleRepository {
-	return &ArticleRepository{conn}
+type AuthorRepository interface {
+	GetByID(ctx context.Context, id int64) (domain.Author, error)
 }
 
-func (m *ArticleRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.Article, err error) {
-	rows, err := m.Conn.QueryContext(ctx, query, args...)
+type Service struct {
+	articleRepo ArticleRepository
+	authorRepo  AuthorRepository
+}
+
+func NewService(a ArticleRepository, ar AuthorRepository) *Service {
+	return &Service{
+		articleRepo: a,
+		authorRepo:  ar,
+	}
+}
+
+func (a *Service) GetByID(ctx context.Context, id int64) (res domain.Article, err error) {
+	res, err = a.articleRepo.GetByID(ctx, id)
 	if err != nil {
-		logrus.Error(err)
-		return nil, err
+		return
 	}
 
-	defer func() {
-		errRow := rows.Close()
-		if errRow != nil {
-			logrus.Error(errRow)
-		}
-	}()
-
-	result = make([]domain.Article, 0)
-	for rows.Next() {
-		t := domain.Article{}
-		authorID := int64(0)
-		err = rows.Scan(
-			&t.ID,
-			&t.Title,
-			&t.Content,
-			&authorID,
-			&t.UpdatedAt,
-			&t.CreatedAt,
-		)
-
-		if err != nil {
-			logrus.Error(err)
-			return nil, err
-		}
-		t.Author = domain.Author{
-			ID: authorID,
-		}
-		result = append(result, t)
+	resAuthor, err := a.authorRepo.GetByID(ctx, res.Author.ID)
+	if err != nil {
+		return domain.Article{}, err
 	}
-
-	return result, nil
+	res.Author = resAuthor
+	return
 
 }
