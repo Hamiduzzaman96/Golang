@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/bxcodec/go-clean-arch/domain/GO/domain"
+	"github.com/labstack/echo"
 )
 
 type ResponseError struct {
@@ -16,7 +17,6 @@ type ArticleService interface {
 	GetByID(ctx context.Context, id int64) (domain.Article, error)
 }
 
-// ArticleHandler represents the HTTP handler for articles
 type ArticleHandler struct {
 	Service ArticleService
 }
@@ -29,18 +29,21 @@ func NewArticleHandler(e *echo.Echo, svc ArticleService) {
 }
 
 func (a *ArticleHandler) GetByID(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
+	idp, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		return c.JSON(http.StatusNotFound, err.Error())
 	}
 
-	id := int64(idP)
+	id := int64(idp)
 	ctx := c.Request().Context()
 
 	art, err := a.Service.GetByID(ctx, id)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-
 	return c.JSON(http.StatusOK, art)
+}
+
+func getStatusCode(err error) int {
+	panic("unimplemented")
 }
